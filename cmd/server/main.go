@@ -102,6 +102,29 @@ func apiGridBookmarks(c web.C, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		renderStatus(w, "success")
+	case "delete-records":
+		err := r.ParseForm()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			renderStatus(w, "error")
+			return
+		}
+		values := r.PostForm["selected[]"]
+		for _, value := range values {
+			recid, err := strconv.Atoi(value)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			bookmark := mybookmarks.Bookmark{ID: recid}
+			db.Debug().Delete(&bookmark)
+		}
+		if db.Error != nil {
+			log.Printf("failed to save. err=%s", db.Error)
+			renderStatus(w, "error")
+			return
+		}
+		renderStatus(w, "success")
 	}
 }
 
