@@ -34,8 +34,7 @@ $(function () {
     return '<div>' + formatDateTime(date) + '</div>'
   }
 
-  var $grid = $('#grid');
-  $grid.w2grid({
+  $('#grid').w2grid({
     name: 'grid',
     recid: 'id',
     url: '/api/grid/bookmarks',
@@ -63,17 +62,19 @@ $(function () {
     ],
     toolbar: {
       onClick: function(e) {
-        var grid, recid
+        var grid = w2ui.grid,
+            recid
         if (e.target === 'w2ui-add') {
-          grid = w2ui.grid
           recid = grid.records.length + 1
           grid.add({ recid: recid })
           grid.editField(recid, 0)
+        } else if (e.target === 'w2ui-edit') {
+          grid.editField(grid.getSelection()[0], 0)
         }
       }
     }
-  });
-});
+  })
+})
 </script>
 
 <!--CODE-->
