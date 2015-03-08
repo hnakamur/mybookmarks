@@ -14,7 +14,7 @@
 <script>
 $(function () {
   function formatDateTime(date) {
-    return w2utils.formatDateTime(date, "yyyy-mm-dd", "hh24:mi:ss")
+    return w2utils.formatDate(date, 'yyyy-mm-dd') + ' ' + w2utils.formatTime(date, "hh24:mi:ss")
   }
   function renderDateTime(date) {
     return '<div>' + formatDateTime(date) + '</div>'
