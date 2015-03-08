@@ -6,6 +6,7 @@
 <link rel="stylesheet" type="text/css" href="/css/w2ui-1.4.2.min.css" />
 <link rel="stylesheet" type="text/css" href="/css/bootstrap-3.3.2.min.css" />
 <link rel="stylesheet" type="text/css" href="/css/bootstrap-theme-3.3.2.min.css" />
+<link rel="stylesheet" type="text/css" href="/css/tag-editor.css" />
 </head>
 <body>
 <div id="grid"></div>
@@ -13,14 +14,36 @@
 <script src="/js/w2ui-1.4.2.js"></script>
 <script>
 $(function () {
+  var grid = $('#grid'),
+      tagRegex = /^(.*)[, ]+$/,
+      sepRegex = /[, ]+/m
+
   function formatDateTime(date) {
     return w2utils.formatDate(date, 'yyyy-mm-dd') + ' ' + w2utils.formatTime(date, "hh24:mi:ss")
   }
   function renderDateTime(date) {
     return '<div>' + formatDateTime(date) + '</div>'
   }
+  function createTag(tag) {
+    return $('<div class="tag-editor-tag">').append(
+      $('<div class="tag-editor-text">').text(tag),
+      '<a class="tag-editor-delete">x</a>'
+    )
+  }
+  function renderTags(tags) {
+    var field = $('<div class="tag-editor-field">')
+    if (tags) {
+      field.append(
+        $.map(tags.split(sepRegex), function(tag) {
+          return $('<div class="tag-editor-tag">').append(
+            $('<div class="tag-editor-text">').text(tag)
+          )
+        })
+      )
+    }
+    return field.html()
+  }
 
-  var grid = $('#grid')
   grid.css('width', '100%')
   grid.height($(window).height())
   $(window).on('resize', function(e) {
@@ -39,13 +62,17 @@ $(function () {
       toolbarEdit: true
     },
     columns: [
-      { field: 'title', caption: 'Title', size: '140em',
+      { field: 'title', caption: 'Title', size: '80em',
         editable: { type: 'text' }
       },
       { field: 'url', caption: 'URL', size: '60em',
         editable: { type: 'text' }
       },
-      { field: 'note', caption: 'Note', size: '80em',
+      { field: 'note', caption: 'Note', size: '60em',
+        editable: { type: 'text' }
+      },
+      { field: 'tags', caption: 'Tags', size: '60em',
+        render: function(record) { return renderTags(record.tags) },
         editable: { type: 'text' }
       },
       { field: 'created_at', caption: 'Created At', size: '40em',
@@ -66,6 +93,103 @@ $(function () {
         } else if (e.target === 'w2ui-edit') {
           grid.editField(grid.getSelection()[0], 0)
         }
+      }
+    },
+    onEditField: function(e) {
+      var grid = w2ui.grid,
+          column = e.column,
+          recid,
+          index,
+          tr,
+          el,
+          tags,
+          cellInput,
+          tagInput,
+          tagMeasure,
+          texteasure,
+          tagField,
+          insertTag,
+          adjustInputWidth
+
+      console.log('onEditField', e, el)
+      if (grid.columns[column].field === 'tags') {
+        e.preventDefault()
+        recid = e.recid
+        index = grid.get(recid, true)
+        tr = $('#grid_'+ grid.name +'_rec_'+ w2utils.escapeId(recid))
+        el = tr.find('[col='+ column +'] > div')
+
+        tagsVal = grid.records[index].tags
+        tags = tagsVal ? tagsVal.split(sepRegex) : []
+
+        cellInput = $('<input id="grid_'+ grid.name +'_edit_'+ recid +'_'+ column +'">').css('width', 0)
+        cellInput.val(tags.join(', '))
+        tagInput = $('<input class="tag-editor-input">').css('width', 0)
+        tagMeasure = createTag('').css({position: 'absolute', left: "-9999px"})
+        textMeasure = tagMeasure.find('.tag-editor-text')
+        console.log('edit start. tags', tags)
+        tagField = $('<div class="tag-editor-field">').append(
+          tagMeasure,
+          $.map(tags, createTag),
+          tagInput
+        ).css('width', el.width())
+
+        insertTag = function(tag) {
+          if (tag && $.inArray(tag, tags) == -1) {
+            tags.push(tag)
+            tagInput.before(createTag(tag)).val('')
+          } else {
+            tagInput.val('')
+          }
+          adjustInputWidth('')
+        }
+        adjustInputWidth = function(val) {
+          // To avoid juggling of input widths, we measure text width
+          // with one more character.  We use 'W' here because it is
+          // a wide character.
+          textMeasure.text(val + 'W')
+          tagInput.css('width', tagMeasure.width())
+        }
+        el.addClass('w2ui-editable')
+          .replaceWith(tagField).append(cellInput)
+        tagInput.on('focus', function(e) {
+          adjustInputWidth('')
+        })
+        .on('blur', function(e) {
+          var val = tagInput.val(),
+              input
+          if (val) {
+            insertTag(val.replace(sepRegex, ''))
+          }
+          cellInput.val(tags.join(', '))
+console.log('cellInput val', cellInput.get(0).value)
+          grid.editChange.call(grid, cellInput.get(0), index, column, e)
+console.log('after editChange. tagsVal=', grid.records[index].tags)
+        })
+        .on('keydown', function(e) {
+          var val = tagInput.val()
+          if (e.which == 8 /* Backspace */ && !val && tags.length) {
+            tags.pop()
+            tagInput.prev().remove()
+          }
+        })
+        .on('keyup', function(e) {
+          var val = tagInput.val(),
+              matches
+          if (val) {
+            matches = tagRegex.exec(val)
+            if (matches) {
+              // We need to split tag text with separators
+              // because text pasted from clipboard may contain those.
+              $.each(matches[1].split(sepRegex), function(i, tag) {
+                insertTag(tag)
+              })
+            } else {
+              adjustInputWidth(val)
+            }
+          }
+        })
+        tagInput.focus()
       }
     }
   })
