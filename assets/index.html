@@ -37,7 +37,6 @@ $(function () {
   var $grid = $('#grid');
   $grid.w2grid({
     name: 'grid',
-    recid: 'id',
     url: '/api/grid/bookmarks',
     show: {
       toolbar: true,
@@ -63,11 +62,14 @@ $(function () {
     ],
     toolbar: {
       onClick: function(e) {
-        console.log('onClick', e)
+        var grid, recid
+        if (e.target === 'w2ui-add') {
+          grid = w2ui.grid
+          recid = grid.records.length + 1
+          grid.add({ recid: recid })
+          grid.editField(recid, 0)
+        }
       }
-    },
-    onSave: function(e) {
-      console.log('onSave', e)
     }
   });
 });

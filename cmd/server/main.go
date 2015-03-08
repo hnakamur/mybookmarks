@@ -85,8 +85,7 @@ func apiGridBookmarks(c web.C, w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
-			log.Printf("recid=%d", recid)
-			bookmark := mybookmarks.Bookmark{ID: recid}
+			bookmark := mybookmarks.Bookmark{}
 			db.First(&bookmark, recid)
 			if value, ok := getPostFormFirstValue(r, fmt.Sprintf("changes[%d][title]", i)); ok {
 				bookmark.Title = value
@@ -94,7 +93,7 @@ func apiGridBookmarks(c web.C, w http.ResponseWriter, r *http.Request) {
 			if value, ok := getPostFormFirstValue(r, fmt.Sprintf("changes[%d][url]", i)); ok {
 				bookmark.URL = value
 			}
-			db.Save(&bookmark)
+			db.Debug().Save(&bookmark)
 		}
 
 		if db.Error != nil {
