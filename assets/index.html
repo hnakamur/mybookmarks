@@ -8,21 +8,7 @@
 <link rel="stylesheet" type="text/css" href="/css/bootstrap-theme-3.3.2.min.css" />
 </head>
 <body>
-
-<div class="content">
-    <div id="example_title">
-        <h1>Simple Grid</h1>
-        The grid below displays data loaded from a url. The data should come in a JSON format (see list.json files for more details). In this JSON
-        file you can pass any grid property and it will be merged into the grid.
-    </div>
-    <div id="example_view"></div>
-    <div id="example_code"></div>
-</div>
-
-<!--CODE-->
-<div id="grid" style="width: 100%; height: 350px;"></div>
-
-<!--CODE-->
+<div id="grid"></div>
 <script src="/js/jquery-1.11.2.js"></script>
 <script src="/js/w2ui-1.4.2.js"></script>
 <script>
@@ -34,7 +20,13 @@ $(function () {
     return '<div>' + formatDateTime(date) + '</div>'
   }
 
-  $('#grid').w2grid({
+  var grid = $('#grid')
+  grid.css('width', '100%')
+  grid.height($(window).height())
+  $(window).on('resize', function(e) {
+    grid.height($(window).height())
+  })
+  grid.w2grid({
     name: 'grid',
     recid: 'id',
     url: '/api/grid/bookmarks',
