@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>My Bookmarks</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="/css/w2ui-1.4.2.min.css" />
+<link rel="stylesheet" type="text/css" href="/css/bootstrap-3.3.2.min.css" />
+<link rel="stylesheet" type="text/css" href="/css/bootstrap-theme-3.3.2.min.css" />
+</head>
+<body>
+
+<div class="content">
+    <div id="example_title">
+        <h1>Simple Grid</h1>
+        The grid below displays data loaded from a url. The data should come in a JSON format (see list.json files for more details). In this JSON
+        file you can pass any grid property and it will be merged into the grid.
+    </div>
+    <div id="example_view"></div>
+    <div id="example_code"></div>
+</div>
+
+<!--CODE-->
+<div id="grid" style="width: 100%; height: 350px;"></div>
+
+<!--CODE-->
+<script src="/js/jquery-1.11.2.js"></script>
+<script src="/js/w2ui-1.4.2.js"></script>
+<script>
+$(function () {
+  function formatDateTime(date) {
+    return w2utils.formatDateTime(date, "yyyy-mm-dd", "hh24:mi:ss")
+  }
+  function renderDateTime(date) {
+    return '<div>' + formatDateTime(date) + '</div>'
+  }
+
+  var $grid = $('#grid');
+  $grid.w2grid({
+    name: 'grid',
+    recid: 'id',
+    url: '/api/grid/bookmarks',
+    show: {
+      toolbar: true,
+      footer: true,
+      toolbarAdd: true,
+      toolbarDelete: true,
+      toolbarSave: true,
+      toolbarEdit: true
+    },
+    columns: [
+      { field: 'url', caption: 'URL', size: '140em',
+        editable: { type: 'text' }
+      },
+      { field: 'title', caption: 'Title', size: '140em',
+        editable: { type: 'text' }
+      },
+      { field: 'created_at', caption: 'Created At', size: '40em',
+        render: function(record) { return renderDateTime(record.created_at) }
+      },
+      { field: 'updated_at', caption: 'Updated At', size: '40em',
+        render: function(record) { return renderDateTime(record.updated_at) }
+      }
+    ],
+    toolbar: {
+      onClick: function(e) {
+        console.log('onClick', e)
+      }
+    },
+    onSave: function(e) {
+      console.log('onSave', e)
+    }
+  });
+});
+</script>
+
+<!--CODE-->
+
+</body>
+</html>
