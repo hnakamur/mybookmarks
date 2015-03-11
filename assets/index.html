@@ -86,6 +86,7 @@ $(function () {
       onClick: function(e) {
         var grid = w2ui.grid,
             recid
+        console.log('onClick', e)
         if (e.target === 'w2ui-add') {
           recid = grid.records.length + 1
           grid.add({ recid: recid })
@@ -101,7 +102,7 @@ $(function () {
           recid,
           index,
           tr,
-          el,
+          td,
           tags,
           cellInput,
           tagInput,
@@ -109,21 +110,22 @@ $(function () {
           texteasure,
           tagField,
           insertTag,
-          adjustInputWidth
+          adjustInputWidth,
+          finishEditTags
 
-      console.log('onEditField', e, el)
+      console.log('onEditField', e, td)
       if (grid.columns[column].field === 'tags') {
         e.preventDefault()
         recid = e.recid
         index = grid.get(recid, true)
         tr = $('#grid_'+ grid.name +'_rec_'+ w2utils.escapeId(recid))
-        el = tr.find('[col='+ column +'] > div')
+        td = tr.find('td[col='+ column +']')
 
         tagsVal = grid.records[index].tags
         tags = tagsVal ? tagsVal.split(sepRegex) : []
 
-        cellInput = $('<input id="grid_'+ grid.name +'_edit_'+ recid +'_'+ column +'">').css('width', 0)
-        cellInput.val(tags.join(', '))
+//        cellInput = $('<input id="grid_'+ grid.name +'_edit_'+ recid +'_'+ column +'">').css('width', 0)
+//        cellInput.val(tags.join(', '))
         tagInput = $('<input class="tag-editor-input">').css('width', 0)
         tagMeasure = createTag('').css({position: 'absolute', left: "-9999px"})
         textMeasure = tagMeasure.find('.tag-editor-text')
@@ -132,7 +134,7 @@ $(function () {
           tagMeasure,
           $.map(tags, createTag),
           tagInput
-        ).css('width', el.width())
+        ).css('width', '100%') 
 
         insertTag = function(tag) {
           if (tag && $.inArray(tag, tags) == -1) {
@@ -150,27 +152,55 @@ $(function () {
           textMeasure.text(val + 'W')
           tagInput.css('width', tagMeasure.width())
         }
-        el.addClass('w2ui-editable')
-          .replaceWith(tagField).append(cellInput)
+        finishEditTags = function() {
+          var val = tagInput.val()
+          if (val) {
+            insertTag(val.replace(sepRegex, ''))
+          }
+          grid.records[index].tags = tags.join(', ')
+          tagField.remove()
+          grid.refreshRow(recid)
+        }
+        td.addClass('w2ui-editable')
+          .replaceWith(tagField) //.append(cellInput)
+
+        tagField.on('click', function(e) {
+          console.log('tagField click', e)
+        })
+        tagField.find('.tag-editor-delete').on('click', function(e) {
+          var textElem = $(e.target).prev(),
+            tag = textElem.text(),
+            i = $.inArray(tag, tags)
+          console.log('delete clicked, tag=', tag, ', i=', i)
+          if (i != -1) {
+            tags.splice(i, 1)
+            textElem.parent().remove()
+          }
+          return false
+        })
         tagInput.on('focus', function(e) {
           adjustInputWidth('')
         })
         .on('blur', function(e) {
-          var val = tagInput.val(),
-              input
-          if (val) {
-            insertTag(val.replace(sepRegex, ''))
-          }
-          cellInput.val(tags.join(', '))
-console.log('cellInput val', cellInput.get(0).value)
-          grid.editChange.call(grid, cellInput.get(0), index, column, e)
-console.log('after editChange. tagsVal=', grid.records[index].tags)
+          console.log('tagInput blur', e)
+          finishEditTags()
+          return false
         })
         .on('keydown', function(e) {
           var val = tagInput.val()
+          console.log('keydown', e)
           if (e.which == 8 /* Backspace */ && !val && tags.length) {
             tags.pop()
             tagInput.prev().remove()
+          } else if (e.which == 13 /* Enter */) {
+            finishEditTags()
+            console.log('keydown Enter', e)
+//            if (val) {
+//              insertTag(val.replace(sepRegex, ''))
+//            }
+//            grid.records[index].tags = tags.join(', ')
+//            grid.refreshRow(recid)
+//            tagField.remove()
           }
         })
         .on('keyup', function(e) {
