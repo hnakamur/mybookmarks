@@ -67,7 +67,12 @@ func apiGridBookmarks(c web.C, w http.ResponseWriter, r *http.Request) {
 	switch command {
 	case "get-records":
 		bookmarks := []mybookmarks.Bookmark{}
-		db.Order("updated_at desc").Find(&bookmarks)
+		db.Debug().Table("bookmarks").Select("bookmarks.*, t.tags").Joins(
+			`join (select bookmark_tags.bookmark_id, group_concat(tags.name, ' ') as tags
+			from bookmark_tags join tags on (bookmark_tags.tag_id = tags.id)
+			group by bookmark_tags.bookmark_id
+			order by bookmark_tags.display_order) t
+			on (bookmarks.id = t.bookmark_id)`).Order("bookmarks.updated_at desc").Find(&bookmarks)
 		v := map[string]interface{}{
 			"total":   len(bookmarks),
 			"records": bookmarks,
