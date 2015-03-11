@@ -92,16 +92,28 @@ func apiGridBookmarks(c web.C, w http.ResponseWriter, r *http.Request) {
 			}
 			bookmark := mybookmarks.Bookmark{}
 			db.First(&bookmark, recid)
+			dirty := false
 			if value, ok := getPostFormFirstValue(r, fmt.Sprintf("changes[%d][title]", i)); ok {
-				bookmark.Title = value
+				if bookmark.Title != value {
+					bookmark.Title = value
+					dirty = true
+				}
 			}
 			if value, ok := getPostFormFirstValue(r, fmt.Sprintf("changes[%d][url]", i)); ok {
-				bookmark.URL = value
+				if bookmark.URL != value {
+					bookmark.URL = value
+					dirty = true
+				}
 			}
 			if value, ok := getPostFormFirstValue(r, fmt.Sprintf("changes[%d][note]", i)); ok {
-				bookmark.Note = value
+				if bookmark.Note != value {
+					bookmark.Note = value
+					dirty = true
+				}
 			}
-			db.Debug().Save(&bookmark)
+			if dirty {
+				db.Debug().Save(&bookmark)
+			}
 			if value, ok := getPostFormFirstValue(r, fmt.Sprintf("changes[%d][tags]", i)); ok {
 				log.Printf("i=%d, tags=%s", i, value)
 				if value != "" {
