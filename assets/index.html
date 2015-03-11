@@ -48,6 +48,9 @@ $(function () {
       { field: 'note', caption: 'Note', size: '80em',
         editable: { type: 'text' }
       },
+      { field: 'tags', caption: 'Tags', size: '80em',
+        editable: { type: 'text' }
+      },
       { field: 'created_at', caption: 'Created At', size: '40em',
         render: function(record) { return renderDateTime(record.created_at) }
       },

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
 	"strconv"
 
 	"github.com/hnakamur/mybookmarks"
@@ -28,8 +29,11 @@ func init() {
 	}
 	defer db.Close()
 
-	db.DropTableIfExists(&mybookmarks.Bookmark{})
-	db.CreateTable(&mybookmarks.Bookmark{})
+	db.AutoMigrate(&mybookmarks.Bookmark{}, &mybookmarks.Tag{}, &mybookmarks.BookmarkTag{})
+	db.Model(&mybookmarks.Tag{}).AddUniqueIndex("idx_tag_name", "name")
+	db.Model(&mybookmarks.BookmarkTag{}).AddUniqueIndex("idx_bookmark_tag_bookmark_id_tag_id", "bookmark_id", "tag_id")
+
+	db.Delete(mybookmarks.Bookmark{})
 
 	bookmark := mybookmarks.Bookmark{Title: "Go web site", URL: "http://golang.org"}
 	db.Create(&bookmark)
@@ -75,6 +79,7 @@ func apiGridBookmarks(c web.C, w http.ResponseWriter, r *http.Request) {
 			renderStatus(w, "error")
 			return
 		}
+		sepRe := regexp.MustCompile("[, ]+")
 		for i := 0; ; i++ {
 			value, ok := getPostFormFirstValue(r, fmt.Sprintf("changes[%d][recid]", i))
 			if !ok {
@@ -93,7 +98,65 @@ func apiGridBookmarks(c web.C, w http.ResponseWriter, r *http.Request) {
 			if value, ok := getPostFormFirstValue(r, fmt.Sprintf("changes[%d][url]", i)); ok {
 				bookmark.URL = value
 			}
+			if value, ok := getPostFormFirstValue(r, fmt.Sprintf("changes[%d][note]", i)); ok {
+				bookmark.Note = value
+			}
 			db.Debug().Save(&bookmark)
+			if value, ok := getPostFormFirstValue(r, fmt.Sprintf("changes[%d][tags]", i)); ok {
+				log.Printf("i=%d, tags=%s", i, value)
+				if value != "" {
+					names := []string{}
+					for _, name := range sepRe.Split(value, -1) {
+						if name != "" {
+							names = append(names, name)
+						}
+					}
+
+					foundTags := []mybookmarks.Tag{}
+					db.Debug().Where("name in (?)", names).Find(&foundTags)
+
+					tags := make([]mybookmarks.Tag, len(names))
+					for i, name := range names {
+						tag, ok := findTagByName(foundTags, name)
+						if !ok {
+							tag = mybookmarks.Tag{Name: name}
+							db.Debug().Save(&tag)
+							log.Printf("After save tag: %v", tag)
+						}
+						tags[i] = tag
+					}
+
+					deleteTagIDs := []int{}
+					foundBookmarkTags := []mybookmarks.BookmarkTag{}
+					db.Debug().Where("bookmark_id = ?", bookmark.ID).Find(&foundBookmarkTags)
+					for _, bookmarkTag := range foundBookmarkTags {
+						if _, ok := findTagByID(tags, bookmarkTag.TagID); !ok {
+							deleteTagIDs = append(deleteTagIDs, bookmarkTag.TagID)
+						}
+					}
+					if len(deleteTagIDs) > 0 {
+						db.Debug().Where("bookmark_id = ? and tag_id in (?)", bookmark.ID, deleteTagIDs).Delete(mybookmarks.BookmarkTag{})
+						db.Debug().Where("id in (?) and not exists (select null from bookmark_tags where bookmark_tags.id = tags.id)", deleteTagIDs).Delete(mybookmarks.Tag{})
+					}
+
+					for i, tag := range tags {
+						bookmarkTag, ok := findBookmarkTagByTagID(foundBookmarkTags, tag.ID)
+						if ok {
+							if bookmarkTag.DisplayOrder != i {
+								bookmarkTag.DisplayOrder = i
+								db.Debug().Save(&bookmarkTag)
+							}
+						} else {
+							bookmarkTag := mybookmarks.BookmarkTag{
+								BookmarkID:   bookmark.ID,
+								TagID:        tag.ID,
+								DisplayOrder: i,
+							}
+							db.Debug().Save(&bookmarkTag)
+						}
+					}
+				}
+			}
 		}
 
 		if db.Error != nil {
@@ -126,6 +189,33 @@ func apiGridBookmarks(c web.C, w http.ResponseWriter, r *http.Request) {
 		}
 		renderStatus(w, "success")
 	}
+}
+
+func findTagByName(tags []mybookmarks.Tag, name string) (tag mybookmarks.Tag, found bool) {
+	for _, tag := range tags {
+		if tag.Name == name {
+			return tag, true
+		}
+	}
+	return mybookmarks.Tag{}, false
+}
+
+func findTagByID(tags []mybookmarks.Tag, id int) (tag mybookmarks.Tag, found bool) {
+	for _, tag := range tags {
+		if tag.ID == id {
+			return tag, true
+		}
+	}
+	return mybookmarks.Tag{}, false
+}
+
+func findBookmarkTagByTagID(bookmarkTags []mybookmarks.BookmarkTag, tagID int) (bookmarkTag mybookmarks.BookmarkTag, found bool) {
+	for _, bookmarkTag := range bookmarkTags {
+		if bookmarkTag.TagID == tagID {
+			return bookmarkTag, true
+		}
+	}
+	return mybookmarks.BookmarkTag{}, false
 }
 
 func getPostFormFirstValue(r *http.Request, name string) (string, bool) {
