@@ -15,10 +15,12 @@ import (
 	"github.com/zenazn/goji/web"
 )
 
+const driverName = "sqlite3"
+
 var db gorm.DB
 
 func openDB() (gorm.DB, error) {
-	return gorm.Open("sqlite3", "gorm.db")
+	return gorm.Open(driverName, "gorm.db")
 }
 
 func init() {
@@ -184,20 +186,25 @@ func apiGridBookmarks(c web.C, w http.ResponseWriter, r *http.Request) {
 			renderStatus(w, "error")
 			return
 		}
-		values := r.PostForm["selected[]"]
-		for _, value := range values {
-			recid, err := strconv.Atoi(value)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
+		values, ok := r.PostForm["selected[]"]
+		if ok {
+			bookmarkIDs := []int{}
+			for _, value := range values {
+				bookmarkID, err := strconv.Atoi(value)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				bookmarkIDs = append(bookmarkIDs, bookmarkID)
+			}
+			db.Debug().Where("id in (?)", bookmarkIDs).Delete(mybookmarks.Bookmark{})
+			db.Debug().Where("id in (select distinct tag_id from bookmark_tags where bookmark_id in (?)) and not exists (select null from bookmark_tags where tag_id = tags.id and bookmark_id not in (?))", bookmarkIDs, bookmarkIDs).Delete(mybookmarks.Tag{})
+			db.Debug().Where("bookmark_id in (?)", bookmarkIDs).Delete(mybookmarks.BookmarkTag{})
+			if db.Error != nil {
+				log.Printf("failed to save. err=%s", db.Error)
+				renderStatus(w, "error")
 				return
 			}
-			bookmark := mybookmarks.Bookmark{ID: recid}
-			db.Debug().Delete(&bookmark)
-		}
-		if db.Error != nil {
-			log.Printf("failed to save. err=%s", db.Error)
-			renderStatus(w, "error")
-			return
 		}
 		renderStatus(w, "success")
 	}
