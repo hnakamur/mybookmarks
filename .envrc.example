@@ -1,0 +1,6 @@
+export SQL_DRIVER_NAME=postgres
+export SQL_DATA_SOURCE='dbname=mybookmarks sslmode=disable'
+
+# for sqlite3
+#export SQL_DRIVER_NAME=sqlite3
+#export SQL_DATA_SOURCE=gorm.db
