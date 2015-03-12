@@ -5,48 +5,24 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"regexp"
 	"strconv"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/hnakamur/mybookmarks"
 	"github.com/jinzhu/gorm"
+	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/zenazn/goji"
 	"github.com/zenazn/goji/web"
 )
 
-const driverName = "sqlite3"
-
+var sqlDriverName = os.Getenv("SQL_DRIVER_NAME")
 var db gorm.DB
 
 func openDB() (gorm.DB, error) {
-	return gorm.Open(driverName, "gorm.db")
-}
-
-func init() {
-	log.Print("init start")
-	db, err := openDB()
-	if err != nil {
-		log.Fatalf("failed to open database. %s", err)
-	}
-	defer db.Close()
-
-	db.AutoMigrate(&mybookmarks.Bookmark{}, &mybookmarks.Tag{}, &mybookmarks.BookmarkTag{})
-	db.Model(&mybookmarks.Tag{}).AddUniqueIndex("idx_tag_name", "name")
-	db.Model(&mybookmarks.BookmarkTag{}).AddUniqueIndex("idx_bookmark_tag_bookmark_id_tag_id", "bookmark_id", "tag_id")
-
-	db.Delete(mybookmarks.Bookmark{})
-
-	bookmark := mybookmarks.Bookmark{Title: "Go web site", URL: "http://golang.org"}
-	db.Create(&bookmark)
-
-	bookmark = mybookmarks.Bookmark{Title: "Goji API document", URL: "http://godoc.org/github.com/zenazn/goji"}
-	db.Create(&bookmark)
-
-	bookmark = mybookmarks.Bookmark{Title: "Gorm API document", URL: "http://godoc.org/github.com/jinzhu/gorm"}
-	db.Create(&bookmark)
-
-	log.Print("init exit")
+	return gorm.Open(sqlDriverName, os.Getenv("SQL_DATA_SOURCE"))
 }
 
 func renderStatus(w http.ResponseWriter, status string) {
@@ -67,12 +43,27 @@ func apiGridBookmarks(c web.C, w http.ResponseWriter, r *http.Request) {
 	switch command {
 	case "get-records":
 		bookmarks := []mybookmarks.Bookmark{}
-		db.Debug().Table("bookmarks").Select("bookmarks.*, t.tags").Joins(
-			`join (select bookmark_tags.bookmark_id, group_concat(tags.name, ' ') as tags
-			from bookmark_tags join tags on (bookmark_tags.tag_id = tags.id)
-			group by bookmark_tags.bookmark_id
-			order by bookmark_tags.display_order) t
-			on (bookmarks.id = t.bookmark_id)`).Order("bookmarks.updated_at desc").Find(&bookmarks)
+		var joins string
+		switch sqlDriverName {
+		case "mysql", "sqlite3":
+			joins = `left join (select bookmark_tags.bookmark_id, group_concat(tags.name, ' ') as tags
+				from bookmark_tags join tags on (bookmark_tags.tag_id = tags.id)
+				group by bookmark_tags.bookmark_id
+				order by bookmark_tags.display_order) t
+				on (bookmarks.id = t.bookmark_id)`
+		case "postgres":
+			joins = `left join (
+					select bookmark_id, string_agg(name, ' ') as tags
+					from (
+						select bookmark_tags.bookmark_id, tags.name
+						from bookmark_tags join tags on (bookmark_tags.tag_id = tags.id)
+						order by bookmark_tags.bookmark_id, bookmark_tags.display_order
+					) as bt
+					group by bookmark_id
+				) t on (bookmarks.id = t.bookmark_id)`
+		}
+		db.Debug().Table("bookmarks").Select("bookmarks.*, t.tags").Joins(joins).Order(
+			"bookmarks.updated_at desc").Find(&bookmarks)
 		v := map[string]interface{}{
 			"total":   len(bookmarks),
 			"records": bookmarks,
