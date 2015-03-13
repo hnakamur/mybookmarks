@@ -11,6 +11,11 @@ type Bookmark struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+type BookmarkWithTags struct {
+	Bookmark
+	Tags string `json:"tags"`
+}
+
 type Tag struct {
 	ID        int `json:"id"`
 	Name      string
@@ -20,9 +25,9 @@ type Tag struct {
 
 type BookmarkTag struct {
 	ID           int `json:"id"`
-	BookMarkID   int
+	BookmarkID   int
 	TagID        int
-	DisplayOrder uint
+	DisplayOrder int
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }

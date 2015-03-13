@@ -42,7 +42,7 @@ func apiGridBookmarks(c web.C, w http.ResponseWriter, r *http.Request) {
 
 	switch command {
 	case "get-records":
-		bookmarks := []mybookmarks.Bookmark{}
+		bookmarks := []mybookmarks.BookmarkWithTags{}
 		var joins string
 		switch sqlDriverName {
 		case "mysql", "sqlite3":
@@ -62,7 +62,7 @@ func apiGridBookmarks(c web.C, w http.ResponseWriter, r *http.Request) {
 					group by bookmark_id
 				) t on (bookmarks.id = t.bookmark_id)`
 		}
-		db.Debug().Table("bookmarks").Select("bookmarks.*, t.tags").Joins(joins).Order(
+		db.Debug().Table("bookmarks").Select("bookmarks.id, bookmarks.title, bookmarks.url, bookmarks.note, bookmarks.created_at, bookmarks.updated_at, t.tags").Joins(joins).Order(
 			"bookmarks.updated_at desc").Find(&bookmarks)
 		v := map[string]interface{}{
 			"total":   len(bookmarks),
