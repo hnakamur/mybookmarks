@@ -114,18 +114,20 @@ func apiGridBookmarks(c web.C, w http.ResponseWriter, r *http.Request) {
 			}
 			if value, ok := getPostFormFirstValue(r, fmt.Sprintf("changes[%d][tags]", i)); ok {
 				log.Printf("i=%d, tags=%s", i, value)
+				names := []string{}
 				if value != "" {
-					names := []string{}
 					for _, name := range sepRe.Split(value, -1) {
 						if name != "" {
 							names = append(names, name)
 						}
 					}
+				}
 
+				tags := make([]mybookmarks.Tag, len(names))
+				if len(names) > 0 {
 					foundTags := []mybookmarks.Tag{}
 					db.Debug().Where("name in (?)", names).Find(&foundTags)
 
-					tags := make([]mybookmarks.Tag, len(names))
 					for i, name := range names {
 						tag, ok := findTagByName(foundTags, name)
 						if !ok {
@@ -135,35 +137,35 @@ func apiGridBookmarks(c web.C, w http.ResponseWriter, r *http.Request) {
 						}
 						tags[i] = tag
 					}
+				}
 
-					deleteTagIDs := []int{}
-					foundBookmarkTags := []mybookmarks.BookmarkTag{}
-					db.Debug().Where("bookmark_id = ?", bookmark.ID).Find(&foundBookmarkTags)
-					for _, bookmarkTag := range foundBookmarkTags {
-						if _, ok := findTagByID(tags, bookmarkTag.TagID); !ok {
-							deleteTagIDs = append(deleteTagIDs, bookmarkTag.TagID)
-						}
+				deleteTagIDs := []int{}
+				foundBookmarkTags := []mybookmarks.BookmarkTag{}
+				db.Debug().Where("bookmark_id = ?", bookmark.ID).Find(&foundBookmarkTags)
+				for _, bookmarkTag := range foundBookmarkTags {
+					if _, ok := findTagByID(tags, bookmarkTag.TagID); !ok {
+						deleteTagIDs = append(deleteTagIDs, bookmarkTag.TagID)
 					}
-					if len(deleteTagIDs) > 0 {
-						db.Debug().Where("bookmark_id = ? and tag_id in (?)", bookmark.ID, deleteTagIDs).Delete(mybookmarks.BookmarkTag{})
-						db.Debug().Where("id in (?) and not exists (select null from bookmark_tags where bookmark_tags.id = tags.id)", deleteTagIDs).Delete(mybookmarks.Tag{})
-					}
+				}
+				if len(deleteTagIDs) > 0 {
+					db.Debug().Where("bookmark_id = ? and tag_id in (?)", bookmark.ID, deleteTagIDs).Delete(mybookmarks.BookmarkTag{})
+					db.Debug().Where("id in (?) and not exists (select null from bookmark_tags where bookmark_tags.id = tags.id)", deleteTagIDs).Delete(mybookmarks.Tag{})
+				}
 
-					for i, tag := range tags {
-						bookmarkTag, ok := findBookmarkTagByTagID(foundBookmarkTags, tag.ID)
-						if ok {
-							if bookmarkTag.DisplayOrder != i {
-								bookmarkTag.DisplayOrder = i
-								db.Debug().Save(&bookmarkTag)
-							}
-						} else {
-							bookmarkTag := mybookmarks.BookmarkTag{
-								BookmarkID:   bookmark.ID,
-								TagID:        tag.ID,
-								DisplayOrder: i,
-							}
+				for i, tag := range tags {
+					bookmarkTag, ok := findBookmarkTagByTagID(foundBookmarkTags, tag.ID)
+					if ok {
+						if bookmarkTag.DisplayOrder != i {
+							bookmarkTag.DisplayOrder = i
 							db.Debug().Save(&bookmarkTag)
 						}
+					} else {
+						bookmarkTag := mybookmarks.BookmarkTag{
+							BookmarkID:   bookmark.ID,
+							TagID:        tag.ID,
+							DisplayOrder: i,
+						}
+						db.Debug().Save(&bookmarkTag)
 					}
 				}
 			}
