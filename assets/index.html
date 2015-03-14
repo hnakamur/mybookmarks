@@ -40,21 +40,27 @@ $(function () {
     },
     columns: [
       { field: 'title', caption: 'Title', size: '140em',
+        sortable: true,
         editable: { type: 'text' }
       },
       { field: 'url', caption: 'URL', size: '60em',
+        sortable: true,
         editable: { type: 'text' }
       },
       { field: 'note', caption: 'Note', size: '80em',
+        sortable: true,
         editable: { type: 'text' }
       },
       { field: 'tags', caption: 'Tags', size: '80em',
+        sortable: true,
         editable: { type: 'text' }
       },
       { field: 'created_at', caption: 'Created At', size: '40em',
+        sortable: true,
         render: function(record) { return renderDateTime(record.created_at) }
       },
       { field: 'updated_at', caption: 'Updated At', size: '40em',
+        sortable: true,
         render: function(record) { return renderDateTime(record.updated_at) }
       }
     ],
@@ -64,12 +70,18 @@ $(function () {
             recid
         if (e.target === 'w2ui-add') {
           recid = grid.records.length + 1
-          grid.add({ recid: recid })
+          grid.records.unshift({ recid: recid })
+          grid.refresh()
           grid.editField(recid, 0)
         } else if (e.target === 'w2ui-edit') {
           grid.editField(grid.getSelection()[0], 0)
         }
       }
+    },
+    onSave: function(e) {
+      setTimeout(function() {
+        w2ui.grid.reload()
+      }, 1)
     }
   })
 })
