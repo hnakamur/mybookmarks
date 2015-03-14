@@ -283,13 +283,13 @@ bookmarklet code:
 
 javascript:(function(){
   var iframe = document.createElement('iframe');
-  iframe.src = 'http://localhost:8000/bookmark-form?title=' + encodeURIComponent(document.title) + '&url=' + encodeURIComponent(location.href);
+  iframe.src = 'http://localhost:8000/mybookmarks/bookmark-form?title=' + encodeURIComponent(document.title) + '&url=' + encodeURIComponent(location.href);
   document.body.appendChild(iframe);
 })()
 */
 
 const bookmarkFormTemplate = `<body onload="document.getElementById('myBookmarkForm').submit()">
-<form action="http://localhost:8000/api/bookmarks" method="POST" id="myBookmarkForm">
+<form action="http://localhost:8080/mybookmarks/api/bookmarks" method="POST" id="myBookmarkForm">
 <input type="hidden" name="title" value="{{.Title}}">
 <input type="hidden" name="url" value="{{.URL}}">
 </form>
@@ -310,9 +310,9 @@ func getBookmarkForm(c web.C, w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	goji.Post("/api/grid/bookmarks", apiGridBookmarks)
-	goji.Post("/api/bookmarks", apiBookmarks)
-	goji.Get("/bookmark-form", getBookmarkForm)
-	goji.Get("/*", http.FileServer(http.Dir("assets")))
+	goji.Post("/mybookmarks/api/grid/bookmarks", apiGridBookmarks)
+	goji.Post("/mybookmarks/api/bookmarks", apiBookmarks)
+	goji.Get("/mybookmarks/bookmark-form", getBookmarkForm)
+	goji.Get("/mybookmarks/*", http.FileServer(http.Dir("assets")))
 	goji.Serve()
 }

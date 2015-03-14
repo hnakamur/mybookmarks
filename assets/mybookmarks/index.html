@@ -3,14 +3,14 @@
 <head>
 <title>My Bookmarks</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<link rel="stylesheet" type="text/css" href="/css/w2ui-1.4.2.min.css" />
-<link rel="stylesheet" type="text/css" href="/css/bootstrap-3.3.2.min.css" />
-<link rel="stylesheet" type="text/css" href="/css/bootstrap-theme-3.3.2.min.css" />
+<link rel="stylesheet" type="text/css" href="/mybookmarks/css/w2ui-1.4.2.min.css" />
+<link rel="stylesheet" type="text/css" href="/mybookmarks/css/bootstrap-3.3.2.min.css" />
+<link rel="stylesheet" type="text/css" href="/mybookmarks/css/bootstrap-theme-3.3.2.min.css" />
 </head>
 <body>
 <div id="grid"></div>
-<script src="/js/jquery-1.11.2.js"></script>
-<script src="/js/w2ui-1.4.2.js"></script>
+<script src="/mybookmarks/js/jquery-1.11.2.js"></script>
+<script src="/mybookmarks/js/w2ui-1.4.2.js"></script>
 <script>
 $(function () {
   function formatDateTime(date) {
@@ -29,7 +29,7 @@ $(function () {
   grid.w2grid({
     name: 'grid',
     recid: 'id',
-    url: '/api/grid/bookmarks',
+    url: '/mybookmarks/api/grid/bookmarks',
     show: {
       toolbar: true,
       footer: true,
