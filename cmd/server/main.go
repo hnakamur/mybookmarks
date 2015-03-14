@@ -29,6 +29,25 @@ func renderStatus(w http.ResponseWriter, status string) {
 	w.Write([]byte(fmt.Sprintf(`{"status":"%s"}`, status)))
 }
 
+func apiBookmarks(c web.C, w http.ResponseWriter, r *http.Request) {
+	db, err := openDB()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		renderStatus(w, "error")
+		return
+	}
+	defer db.Close()
+
+	title := r.FormValue("title")
+	url := r.FormValue("url")
+	log.Printf("apiBookmarks. title=%s, url=%s", title, url)
+	bookmark := mybookmarks.Bookmark{
+		Title: title,
+		URL:   url,
+	}
+	db.Save(&bookmark)
+}
+
 func apiGridBookmarks(c web.C, w http.ResponseWriter, r *http.Request) {
 	db, err := openDB()
 	if err != nil {
@@ -260,6 +279,7 @@ func getPostFormFirstValue(r *http.Request, name string) (string, bool) {
 
 func main() {
 	goji.Post("/api/grid/bookmarks", apiGridBookmarks)
+	goji.Post("/api/bookmarks", apiBookmarks)
 	goji.Get("/*", http.FileServer(http.Dir("assets")))
 	goji.Serve()
 }
