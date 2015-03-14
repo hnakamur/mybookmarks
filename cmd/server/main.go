@@ -8,6 +8,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"text/template"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/hnakamur/mybookmarks"
@@ -277,9 +278,41 @@ func getPostFormFirstValue(r *http.Request, name string) (string, bool) {
 	}
 }
 
+/*
+bookmarklet code:
+
+javascript:(function(){
+  var iframe = document.createElement('iframe');
+  iframe.src = 'http://localhost:8000/bookmark-form?title=' + encodeURIComponent(document.title) + '&url=' + encodeURIComponent(location.href);
+  document.body.appendChild(iframe);
+})()
+*/
+
+const bookmarkFormTemplate = `<body onload="document.getElementById('myBookmarkForm').submit()">
+<form action="http://localhost:8000/api/bookmarks" method="POST" id="myBookmarkForm">
+<input type="hidden" name="title" value="{{.Title}}">
+<input type="hidden" name="url" value="{{.URL}}">
+</form>
+</body>`
+
+func getBookmarkForm(c web.C, w http.ResponseWriter, r *http.Request) {
+	tmpl, err := template.New("bookmarkForm").Parse(bookmarkFormTemplate)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	data := struct{ Title, URL string }{r.FormValue("title"), r.FormValue("url")}
+	err = tmpl.Execute(w, data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
 func main() {
 	goji.Post("/api/grid/bookmarks", apiGridBookmarks)
 	goji.Post("/api/bookmarks", apiBookmarks)
+	goji.Get("/bookmark-form", getBookmarkForm)
 	goji.Get("/*", http.FileServer(http.Dir("assets")))
 	goji.Serve()
 }
