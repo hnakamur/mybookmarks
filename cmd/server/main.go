@@ -95,6 +95,7 @@ func apiGridBookmarks(c web.C, w http.ResponseWriter, r *http.Request) {
 			}
 			bookmark := mybookmarks.Bookmark{}
 			db.First(&bookmark, recid)
+			bookmarkFound := db.Error == nil
 			dirty := false
 			if value, ok := getPostFormFirstValue(r, fmt.Sprintf("changes[%d][title]", i)); ok {
 				if bookmark.Title != value {
@@ -114,11 +115,12 @@ func apiGridBookmarks(c web.C, w http.ResponseWriter, r *http.Request) {
 					dirty = true
 				}
 			}
-			if dirty {
+			if dirty && !bookmarkFound {
+				// NOTE: We need to create a new bookmark before creating bookmark_tags
 				db.Debug().Save(&bookmark)
 			}
+
 			if value, ok := getPostFormFirstValue(r, fmt.Sprintf("changes[%d][tags]", i)); ok {
-				log.Printf("i=%d, tags=%s", i, value)
 				names := []string{}
 				if value != "" {
 					for _, name := range sepRe.Split(value, -1) {
@@ -173,6 +175,13 @@ func apiGridBookmarks(c web.C, w http.ResponseWriter, r *http.Request) {
 						db.Debug().Save(&bookmarkTag)
 					}
 				}
+
+				dirty = true
+			}
+
+			if dirty && bookmarkFound {
+				// NOTE: We need to update updated_at when only tags are updated.
+				db.Debug().Save(&bookmark)
 			}
 		}
 
