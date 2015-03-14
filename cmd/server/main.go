@@ -30,8 +30,6 @@ func renderStatus(w http.ResponseWriter, status string) {
 }
 
 func apiGridBookmarks(c web.C, w http.ResponseWriter, r *http.Request) {
-	command := r.FormValue("cmd")
-	log.Printf("command=%s", command)
 	db, err := openDB()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -40,8 +38,21 @@ func apiGridBookmarks(c web.C, w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.Close()
 
+	command := r.FormValue("cmd")
 	switch command {
 	case "get-records":
+		limit, err := strconv.Atoi(r.FormValue("limit"))
+		if err != nil {
+			renderStatus(w, "error")
+			return
+		}
+		offset, err := strconv.Atoi(r.FormValue("offset"))
+		if err != nil {
+			renderStatus(w, "error")
+			return
+		}
+		var count int
+		db.Debug().Table("bookmarks").Count(&count)
 		bookmarks := []mybookmarks.BookmarkWithTags{}
 		var joins string
 		switch sqlDriverName {
@@ -63,20 +74,14 @@ func apiGridBookmarks(c web.C, w http.ResponseWriter, r *http.Request) {
 				) t on (bookmarks.id = t.bookmark_id)`
 		}
 		db.Debug().Table("bookmarks").Select("bookmarks.id, bookmarks.title, bookmarks.url, bookmarks.note, bookmarks.created_at, bookmarks.updated_at, t.tags").Joins(joins).Order(
-			"bookmarks.updated_at desc").Find(&bookmarks)
+			"bookmarks.updated_at desc").Offset(offset).Limit(limit).Find(&bookmarks)
 		v := map[string]interface{}{
-			"total":   len(bookmarks),
+			"total":   count,
 			"records": bookmarks,
 		}
 		encoder := json.NewEncoder(w)
 		encoder.Encode(v)
 	case "save-records":
-		err := r.ParseForm()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			renderStatus(w, "error")
-			return
-		}
 		sepRe := regexp.MustCompile("[, ]+")
 		for i := 0; ; i++ {
 			value, ok := getPostFormFirstValue(r, fmt.Sprintf("changes[%d][recid]", i))
