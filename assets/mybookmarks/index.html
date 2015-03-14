@@ -19,6 +19,9 @@ $(function () {
   function renderDateTime(date) {
     return '<div>' + formatDateTime(date) + '</div>'
   }
+  function renderURL(url) {
+    return '<div><a href="' + encodeURI(url) + '" target="_blank">' + encodeURI(url) + '</a></div>'
+  }
 
   var grid = $('#grid')
   grid.css('width', '100%')
@@ -45,7 +48,8 @@ $(function () {
       },
       { field: 'url', caption: 'URL', size: '60em',
         sortable: true,
-        editable: { type: 'text' }
+        editable: { type: 'text' },
+        render: function(record) { return renderURL(record.url) }
       },
       { field: 'note', caption: 'Note', size: '80em',
         sortable: true,
